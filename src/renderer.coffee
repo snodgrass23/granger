@@ -93,6 +93,7 @@ class Renderer
     Math.max(Math.min(value, @granger.data.max), @granger.data.min)
 
   valueByPoint: (x, y) ->
+    @_calculateDimensions()
     if @isSingleVector()
       percentage = x / (@dim.radius * 2)
     else
