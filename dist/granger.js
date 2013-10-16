@@ -388,7 +388,6 @@
       this.dim.centerX = (this.dim.width - borderWidth) / 2;
       this.dim.centerY = (this.dim.height - borderWidth) / 2;
       this.dim.radius = this.dim.width / 2 - this.dim.offset;
-      this.draw(this.dim.centerX, this.dim.centerY);
       return this;
     };
 

@@ -21,8 +21,6 @@ class DomRenderer extends Renderer
     @dim.centerX = (@dim.width - borderWidth) / 2
     @dim.centerY = (@dim.height - borderWidth) / 2
     @dim.radius = @dim.width / 2 - @dim.offset
-
-    @draw @dim.centerX, @dim.centerY
     @
 
   draw: (x, y) ->
