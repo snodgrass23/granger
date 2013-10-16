@@ -272,11 +272,11 @@
     Renderer.prototype._eventCoordinates = function(e) {
       var x, y;
       if (e.type === 'touchmove') {
-        x = e.touches[0].pageX - this.dim.left;
-        y = e.touches[0].pageY - this.dim.top;
+        x = e.touches[0].clientX - this.dim.left;
+        y = e.touches[0].clientY - this.dim.top;
       } else {
-        x = e.pageX - this.dim.left;
-        y = e.pageY - this.dim.top;
+        x = e.clientX - this.dim.left;
+        y = e.clientY - this.dim.top;
       }
       return {
         x: x,

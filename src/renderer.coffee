@@ -166,11 +166,11 @@ class Renderer
 
   _eventCoordinates: (e) ->
     if e.type is 'touchmove'
-      x = e.touches[0].pageX - @dim.left
-      y = e.touches[0].pageY - @dim.top
+      x = e.touches[0].clientX - @dim.left
+      y = e.touches[0].clientY - @dim.top
     else
-      x = e.pageX - @dim.left
-      y = e.pageY - @dim.top
+      x = e.clientX - @dim.left
+      y = e.clientY - @dim.top
     { x, y }
 
   _toggleSelectable: (what)->
