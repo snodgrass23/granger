@@ -1,6 +1,6 @@
 {
   "name": "granger",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "main": "dist/granger.js",
   "depencencies": {},
   "ignore": [
