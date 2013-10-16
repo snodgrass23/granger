@@ -5,7 +5,7 @@
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
   Granger = (function() {
-    Granger.version = '0.1.3';
+    Granger.version = '0.1.5';
 
     function Granger(element, options) {
       var value;
@@ -75,8 +75,8 @@
     Renderer.prototype._createElements = function() {
       this.granger.element.style.display = 'none';
       this.canvas.style.cursor = 'pointer';
-      this.canvas.style.mozUserSelect = 'none';
-      this.canvas.style.webkitUserSelect = 'none';
+      this.canvas.style.mozUserSelect = this.canvas.style.webkitUserSelect = this.canvas.style.userSelect = 'none';
+      this.canvas.setAttribute('data-granger', this.granger.element.id);
       this.granger.element.parentNode.insertBefore(this.canvas, this.granger.element);
       return this;
     };
@@ -86,36 +86,34 @@
     };
 
     Renderer.prototype._bindEvents = function() {
-      var isTap, lastCoords, onCancel, onDrag, onEnd, onStart, startCoords,
+      var isTap, lastCoords, onCancel, onDrag, onEnd, onResize, onStart, startCoords,
         _this = this;
       isTap = false;
-      startCoords = void 0;
-      lastCoords = void 0;
+      startCoords = lastCoords = void 0;
+      onResize = function(e) {
+        return _this._calculateDimensions();
+      };
       onStart = function(e) {
         isTap = true;
+        _this._calculateDimensions();
+        _this._toggleSelectable('none');
         startCoords = _this._eventCoordinates(e);
-        _this.canvas.addEventListener('mousemove', onDrag, false);
-        _this.canvas.addEventListener('mouseup', onEnd, false);
-        _this.canvas.addEventListener('mousecancel', onCancel, false);
-        _this.canvas.addEventListener('touchmove', onDrag, false);
-        _this.canvas.addEventListener('touchend', onEnd, false);
-        _this.canvas.addEventListener('touchcancel', onCancel, false);
+        document.documentElement.addEventListener('mousemove', onDrag, false);
         document.documentElement.addEventListener('mouseup', onEnd, false);
+        document.documentElement.addEventListener('mousecancel', onCancel, false);
+        document.documentElement.addEventListener('touchmove', onDrag, false);
         document.documentElement.addEventListener('touchend', onEnd, false);
+        document.documentElement.addEventListener('touchcancel', onCancel, false);
         return false;
       };
       onDrag = function(e) {
         var result;
-        if (e.target !== _this.canvas) {
-          return;
-        }
         lastCoords = _this._eventCoordinates(e);
         result = _this.getPoint(lastCoords.x, lastCoords.y);
         if (Math.abs(startCoords.x - lastCoords.x) > 10 || Math.abs(startCoords.y - lastCoords.y) > 10) {
           isTap = false;
         }
         _this.sync(result.x, result.y);
-        _this.draw(result.x, result.y);
         e.preventDefault();
         return false;
       };
@@ -131,18 +129,18 @@
         return false;
       };
       onCancel = function(e) {
-        _this.canvas.removeEventListener('mousemove', onDrag);
-        _this.canvas.removeEventListener('mouseup', onEnd);
-        _this.canvas.removeEventListener('mousecancel', onCancel);
-        _this.canvas.removeEventListener('touchmove', onDrag);
-        _this.canvas.removeEventListener('touchend', onEnd);
-        _this.canvas.removeEventListener('touchcancel', onCancel);
+        _this._toggleSelectable('');
+        document.documentElement.removeEventListener('mousemove', onDrag);
         document.documentElement.removeEventListener('mouseup', onEnd);
+        document.documentElement.removeEventListener('mousecancel', onCancel);
+        document.documentElement.removeEventListener('touchmove', onDrag);
         document.documentElement.removeEventListener('touchend', onEnd);
+        document.documentElement.removeEventListener('touchcancel', onCancel);
         return startCoords = lastCoords = void 0;
       };
       this.canvas.addEventListener('mousedown', onStart, false);
-      return this.canvas.addEventListener('touchstart', onStart, false);
+      this.canvas.addEventListener('touchstart', onStart, false);
+      return window.addEventListener('resize', onResize, false);
     };
 
     Renderer.prototype.sync = function(x, y) {
@@ -158,14 +156,26 @@
       return this;
     };
 
-    Renderer.prototype.limit = function(value) {
-      return Math.max(Math.min(value, this.granger.data.max), this.granger.data.min);
+    Renderer.prototype.limit = function(value, min, max) {
+      if (min == null) {
+        min = this.granger.data.min;
+      }
+      if (max == null) {
+        max = this.granger.data.max;
+      }
+      return Math.max(Math.min(value, max), min);
     };
 
     Renderer.prototype.valueByPoint = function(x, y) {
       var abs, offset, percentage, radians;
-      if (this.isSingleVector) {
+      if (this.isSingleVector()) {
         percentage = x / (this.dim.radius * 2);
+        if (percentage > 1) {
+          percentage = 1;
+        }
+        if (percentage < 0) {
+          percentage = 0;
+        }
       } else {
         abs = this.pointByAngle(x, y);
         offset = -Math.PI / 2;
@@ -180,9 +190,9 @@
 
     Renderer.prototype.pointByValue = function(value) {
       var percentage, radians, x, y;
-      percentage = (value - this.granger.data.min) / (this.granger.data.max - this.granger.data.min);
-      if (this.isSingleVector) {
-        x = percentage * this.dim.width + this.dim.offset / 2;
+      percentage = this.limit((value - this.granger.data.min) / (this.granger.data.max - this.granger.data.min), 0, 1);
+      if (this.isSingleVector()) {
+        x = percentage * this.dim.width;
         y = 0;
       } else {
         radians = (percentage * 2 + 0.5) * Math.PI;
@@ -244,19 +254,29 @@
       return /^(x|y)/.test(this.options.type);
     };
 
-    Renderer.prototype._eventOffset = function(e) {
-      var node, x, y;
-      x = y = 0;
-      if (!e.offsetParent) {
-        return {
-          x: x,
-          y: y
-        };
-      }
+    Renderer.prototype._offset = function() {
+      var left, node, top;
       node = this.canvas;
+      left = node.offsetLeft;
+      top = node.offsetTop;
       while ((node = node.offsetParent)) {
-        x += node.offsetLeft;
-        y += node.offsetTop;
+        left += node.offsetLeft;
+        top += node.offsetTop;
+      }
+      return {
+        left: left,
+        top: top
+      };
+    };
+
+    Renderer.prototype._eventCoordinates = function(e) {
+      var x, y;
+      if (e.type === 'touchmove') {
+        x = e.touches[0].pageX - this.dim.left;
+        y = e.touches[0].pageY - this.dim.top;
+      } else {
+        x = e.pageX - this.dim.left;
+        y = e.pageY - this.dim.top;
       }
       return {
         x: x,
@@ -264,20 +284,8 @@
       };
     };
 
-    Renderer.prototype._eventCoordinates = function(e) {
-      var offset, x, y;
-      offset = this._eventOffset(e);
-      if (e.type === 'touchmove') {
-        x = e.touches[0].pageX - offset.x;
-        y = e.touches[0].pageY - offset.y;
-      } else {
-        x = e.layerX - offset.x;
-        y = e.layerY - offset.y;
-      }
-      return {
-        x: x,
-        y: y
-      };
+    Renderer.prototype._toggleSelectable = function(what) {
+      return document.body.style['-webkit-user-select'] = document.body.style['-moz-user-select'] = document.body.style['-ms-user-select'] = document.body.style['user-select'] = what || '';
     };
 
     return Renderer;
@@ -306,12 +314,9 @@
     };
 
     CanvasRenderer.prototype._calculateDimensions = function() {
-      this.dim = {
-        width: this.canvas.width,
-        height: this.canvas.height,
-        top: this.canvas.offsetTop,
-        left: this.canvas.offsetLeft
-      };
+      this.dim = this._offset();
+      this.dim.width = this.canvas.width;
+      this.dim.height = this.canvas.height;
       this.dim.centerX = this.dim.width / 2;
       this.dim.centerY = this.dim.height / 2;
       this.dim.radius = this.dim.width / 2 - 6;
@@ -376,11 +381,10 @@
     DomRenderer.prototype._calculateDimensions = function() {
       var borderWidth;
       borderWidth = parseInt(getComputedStyle(this.canvas).getPropertyValue('border-top-width'));
-      this.dim = {
-        width: this.canvas.offsetWidth + borderWidth,
-        height: this.canvas.offsetHeight + borderWidth,
-        offset: this.pointer.offsetWidth
-      };
+      this.dim = this._offset();
+      this.dim.width = this.canvas.offsetWidth + borderWidth;
+      this.dim.height = this.canvas.offsetHeight + borderWidth;
+      this.dim.offset = this.pointer.offsetWidth;
       this.dim.centerX = (this.dim.width - borderWidth) / 2;
       this.dim.centerY = (this.dim.height - borderWidth) / 2;
       this.dim.radius = this.dim.width / 2 - this.dim.offset;

@@ -14,8 +14,10 @@ class Renderer
   _createElements: () ->
     @granger.element.style.display = 'none'
     @canvas.style.cursor = 'pointer'
-    @canvas.style.mozUserSelect = 'none'
-    @canvas.style.webkitUserSelect = 'none'
+    @canvas.style.mozUserSelect =
+    @canvas.style.webkitUserSelect =
+    @canvas.style.userSelect = 'none'
+    @canvas.setAttribute 'data-granger', @granger.element.id
 
     @granger.element.parentNode.insertBefore @canvas, @granger.element
     @
@@ -25,32 +27,30 @@ class Renderer
 
   _bindEvents: () ->
     isTap = false
-    startCoords = undefined
-    lastCoords = undefined
+    startCoords = lastCoords = undefined
+    onResize = (e) =>
+      @_calculateDimensions()
 
     onStart = (e) =>
       isTap = true
+      @_calculateDimensions()
+      @_toggleSelectable 'none'
       startCoords = @_eventCoordinates(e)
-      @canvas.addEventListener 'mousemove', onDrag, false
-      @canvas.addEventListener 'mouseup', onEnd, false
-      @canvas.addEventListener 'mousecancel', onCancel, false
-      @canvas.addEventListener 'touchmove', onDrag, false
-      @canvas.addEventListener 'touchend', onEnd, false
-      @canvas.addEventListener 'touchcancel', onCancel, false
+      document.documentElement.addEventListener 'mousemove', onDrag, false
       document.documentElement.addEventListener 'mouseup', onEnd, false
+      document.documentElement.addEventListener 'mousecancel', onCancel, false
+      document.documentElement.addEventListener 'touchmove', onDrag, false
       document.documentElement.addEventListener 'touchend', onEnd, false
+      document.documentElement.addEventListener 'touchcancel', onCancel, false
       return false
 
     onDrag = (e) =>
-      # TODO: handle this state better. perhaps by using pageX to element offsetX
-      return if e.target != @canvas
       lastCoords = @_eventCoordinates(e)
       result = @getPoint lastCoords.x, lastCoords.y
       if Math.abs(startCoords.x - lastCoords.x) > 10 or Math.abs(startCoords.y - lastCoords.y) > 10
         isTap = false
 
       @sync result.x, result.y
-      @draw result.x, result.y
       e.preventDefault()
       return false
 
@@ -65,18 +65,19 @@ class Renderer
       return false
 
     onCancel = (e) =>
-      @canvas.removeEventListener 'mousemove', onDrag
-      @canvas.removeEventListener 'mouseup', onEnd
-      @canvas.removeEventListener 'mousecancel', onCancel
-      @canvas.removeEventListener 'touchmove', onDrag
-      @canvas.removeEventListener 'touchend', onEnd
-      @canvas.removeEventListener 'touchcancel', onCancel
+      @_toggleSelectable ''
+      document.documentElement.removeEventListener 'mousemove', onDrag
       document.documentElement.removeEventListener 'mouseup', onEnd
+      document.documentElement.removeEventListener 'mousecancel', onCancel
+      document.documentElement.removeEventListener 'touchmove', onDrag
       document.documentElement.removeEventListener 'touchend', onEnd
+      document.documentElement.removeEventListener 'touchcancel', onCancel
       startCoords = lastCoords = undefined
 
     @canvas.addEventListener 'mousedown', onStart, false
     @canvas.addEventListener 'touchstart', onStart, false
+    window.addEventListener 'resize', onResize, false
+
 
   sync: (x, y) ->
     # + 1/2 Math.PI === @data.min
@@ -89,13 +90,15 @@ class Renderer
     @sync x, y
     @
 
-  limit: (value) ->
-    Math.max(Math.min(value, @granger.data.max), @granger.data.min)
+  limit: (value, min = @granger.data.min, max = @granger.data.max) ->
+    Math.max(Math.min(value, max), min)
 
   valueByPoint: (x, y) ->
-    @_calculateDimensions()
+    # @_calculateDimensions()
     if @isSingleVector()
       percentage = x / (@dim.radius * 2)
+      percentage = 1 if percentage > 1
+      percentage = 0 if percentage < 0
     else
       abs = @pointByAngle x, y
       offset = - Math.PI / 2
@@ -109,9 +112,9 @@ class Renderer
     return @limit(percentage * (@granger.data.max - @granger.data.min) + @granger.data.min)
 
   pointByValue: (value) ->
-    percentage = (value - @granger.data.min) / (@granger.data.max - @granger.data.min)
-    if @isSingleVector
-      x = percentage * @dim.width + @dim.offset / 2
+    percentage = @limit((value - @granger.data.min) / (@granger.data.max - @granger.data.min), 0, 1)
+    if @isSingleVector()
+      x = percentage * @dim.width
       y = 0
     else
       radians = (percentage * 2 + 0.5) * Math.PI
@@ -150,26 +153,33 @@ class Renderer
   isSingleVector: () ->
     /^(x|y)/.test @options.type
 
-  _eventOffset: (e) ->
-    x = y = 0
-    return { x, y } unless e.offsetParent
-
+  _offset: () ->
     node = @canvas
-    while (node = node.offsetParent)
-      x += node.offsetLeft
-      y += node.offsetTop
+    left = node.offsetLeft
+    top = node.offsetTop
 
-    return { x, y }
+    while (node = node.offsetParent)
+      left += node.offsetLeft
+      top += node.offsetTop
+
+    { left, top }
 
   _eventCoordinates: (e) ->
-    offset = @_eventOffset(e)
     if e.type is 'touchmove'
-      x = e.touches[0].pageX - offset.x
-      y = e.touches[0].pageY - offset.y
+      x = e.touches[0].pageX - @dim.left
+      y = e.touches[0].pageY - @dim.top
     else
-      x = e.layerX - offset.x
-      y = e.layerY - offset.y
+      x = e.pageX - @dim.left
+      y = e.pageY - @dim.top
     { x, y }
+
+  _toggleSelectable: (what)->
+    document.body.style['-webkit-user-select'] =
+    document.body.style['-moz-user-select'] =
+    document.body.style['-ms-user-select'] =
+    document.body.style['user-select'] =
+    what or ''
+
 
 
 
