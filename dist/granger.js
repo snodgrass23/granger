@@ -5,7 +5,7 @@
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
   Granger = (function() {
-    Granger.version = '0.1.7';
+    Granger.version = '0.1.8';
 
     function Granger(element, options) {
       var value;
@@ -59,7 +59,8 @@
 
   Renderer = (function() {
     function Renderer(granger, startValue) {
-      var start;
+      var start,
+        _this = this;
       this.granger = granger;
       this.options = this.granger.options;
       this._createElements();
@@ -67,6 +68,11 @@
       this._bindEvents();
       start = this.pointByValue(startValue);
       this.update(start.x, start.y);
+      this.granger.element.addEventListener('change', function(e) {
+        var point;
+        point = _this.pointByValue(_this.granger.element.value);
+        return _this.draw(point.x, point.y);
+      }, false);
     }
 
     Renderer.prototype._createElements = function() {
