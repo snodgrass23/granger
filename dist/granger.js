@@ -5,7 +5,7 @@
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
   Granger = (function() {
-    Granger.version = '0.1.6';
+    Granger.version = '0.1.7';
 
     function Granger(element, options) {
       var value;
@@ -27,6 +27,9 @@
     }
 
     Granger.prototype.sync = function(value) {
+      if (isNaN(value)) {
+        return this;
+      }
       this.element.value = Math.round(value);
       fireEvent(this.element, 'change');
       return this;
@@ -56,8 +59,7 @@
 
   Renderer = (function() {
     function Renderer(granger, startValue) {
-      var start,
-        _this = this;
+      var start;
       this.granger = granger;
       this.options = this.granger.options;
       this._createElements();
@@ -65,11 +67,6 @@
       this._bindEvents();
       start = this.pointByValue(startValue);
       this.update(start.x, start.y);
-      this.granger.element.addEventListener('change', function(e) {
-        var point;
-        point = _this.pointByValue(_this.granger.element.value);
-        return _this.draw(point.x, point.y);
-      }, false);
     }
 
     Renderer.prototype._createElements = function() {
@@ -114,6 +111,7 @@
           isTap = false;
         }
         _this.sync(result.x, result.y);
+        _this.draw(result.x, result.y);
         e.preventDefault();
         return false;
       };
@@ -392,6 +390,9 @@
     };
 
     DomRenderer.prototype.draw = function(x, y) {
+      if (isNaN(x) && isNaN(y)) {
+        return this;
+      }
       this.pointer.style.left = x + 'px';
       if (this.isSingleVector()) {
         y = 0;

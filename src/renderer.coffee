@@ -6,10 +6,6 @@ class Renderer
     @_bindEvents()
     start = @pointByValue(startValue)
     @update start.x, start.y
-    @granger.element.addEventListener('change', (e) =>
-      point = @pointByValue(@granger.element.value)
-      @draw point.x, point.y
-    , false)
 
   _createElements: () ->
     @granger.element.style.display = 'none'
@@ -51,6 +47,7 @@ class Renderer
         isTap = false
 
       @sync result.x, result.y
+      @draw result.x, result.y
       e.preventDefault()
       return false
 

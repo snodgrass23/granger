@@ -24,6 +24,8 @@ class DomRenderer extends Renderer
     @
 
   draw: (x, y) ->
+    if isNaN(x) && isNaN(y)
+      return this
     @pointer.style.left = x + 'px'
     if @isSingleVector()
       y = 0
