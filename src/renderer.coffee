@@ -49,9 +49,9 @@ class Renderer
       result = @getPoint lastCoords.x, lastCoords.y
       if Math.abs(startCoords.x - lastCoords.x) > 10 or Math.abs(startCoords.y - lastCoords.y) > 10
         isTap = false
-
-      @sync result.x, result.y
-      @draw result.x, result.y
+      if result.x > 0 && result.x < @dim.width
+        @sync result.x, result.y
+        @draw result.x, result.y
       e.preventDefault()
       return false
 

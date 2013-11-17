@@ -5,7 +5,7 @@
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
   Granger = (function() {
-    Granger.version = '0.1.8';
+    Granger.version = '0.1.9';
 
     function Granger(element, options) {
       var value;
@@ -116,8 +116,10 @@
         if (Math.abs(startCoords.x - lastCoords.x) > 10 || Math.abs(startCoords.y - lastCoords.y) > 10) {
           isTap = false;
         }
-        _this.sync(result.x, result.y);
-        _this.draw(result.x, result.y);
+        if (result.x > 0 && result.x < _this.dim.width) {
+          _this.sync(result.x, result.y);
+          _this.draw(result.x, result.y);
+        }
         e.preventDefault();
         return false;
       };
